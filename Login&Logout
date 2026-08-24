@@ -1,1 +1,370 @@
+.MODEL SMALL        ; USE THE SMALL MEMORY MODEL (ONE DS
+.STACK              ; ALLOCATE 256 BYTES FOR THE STACK
+.DATA               ; BEGINNING OF THE DATA SEGMENT
 
+    ; LOGIN DATA
+
+    registerUsername DB 20
+                     DB ?
+                     DB 21 DUP('$')
+    registerPassword DB 20 
+                     DB ?
+                     DB 21 DUP('$')
+    loginUsername DB 20
+                    DB ?
+                    DB 21 DUP('$')
+    loginPassword DB 20
+                    DB ?
+                    DB 21 DUP('$')
+
+    attempts DB 3
+
+    ; MESSAGES
+
+    msgTitle DB 13,10
+              DB "================================",13,10
+              DB "       SEAT RESERVATION SYSTEM",13,10
+              DB "================================",13,10,'$'
+
+    msgRegister DB 13,10
+                DB "Please register your account.",13,10
+                DB "Enter your username and password.",13,10,'$'
+    msgRegisterUser DB 13,10,"Enter your username: $"
+    msgRegisterPassword DB 13,10,"Enter your password: $"
+    msgInvalidUsername DB 13,10,"Invalid character. Please only enter letters or numbers."
+    msgInvalidPassword DB 13,10,"Invalid character. Please only enter letters, numbers or special characters."
+
+    msgLoginUsername DB 13,10,"Enter your username: $"
+    msgLoginPassword DB 13,10,"Enter your password: $"
+
+    msgLogin DB 13,10
+             DB "Please login to continue.",13,10,'$'
+    
+    msgRegisterSuccess DB 13,10,13,10
+                  DB "Registration successful!",13,10,'$'
+
+    msgLoginSuccess DB 13,10,13,10
+                   DB "Login successful!",13,10,'$'
+
+    msgLoginFail DB 13,10
+            DB "Invalid username or password!",13,10,'$'
+
+    msgAttempts DB "Attempts remaining: $"
+
+    msgLocked DB 13,10,13,10
+              DB "Too many failed attempts!",13,10
+              DB "System locked.",13,10,'$'
+
+    newline DB 13,10,'$'
+
+
+.CODE               ; BEGINNING OF CODE SEGMENT
+MAIN PROC
+
+    MOV AX, @DATA
+    MOV DS, AX
+
+    MOV AH, 09H
+    LEA DX, msgTitle
+    INT 21H
+
+    CALL REGISTER
+    CALL LOGIN
+
+MOV AH, 4CH         ; Terminate program and return control to DOS
+INT 21H
+MAIN ENDP
+
+
+REGISTER PROC
+
+    MOV AH, 09H
+    LEA DX, msgRegister
+    INT 21H
+
+    ; Ask for username
+    MOV AH, 09H
+    LEA DX, msgRegisterUser
+    INT 21H
+
+;cin
+
+    LEA SI, registerUsername
+    CALL INPUT_USERNAME
+
+    ; Ask for password
+    MOV AH, 09H
+    LEA DX, msgRegisterPassword
+    INT 21H
+
+    LEA SI, registerPassword
+    CALL INPUT_PASSWORD
+
+    ; Registration successful
+    MOV AH, 09H
+    LEA DX, msgRegisterSuccess
+    INT 21H
+
+    RET
+
+REGISTER ENDP
+
+
+LOGIN PROC
+
+    MOV AH, 09H
+    LEA DX, msgTitle
+    INT 21H
+
+LOGIN_ATTEMPT:
+
+    ; Ask username
+    MOV AH, 09H
+    LEA DX, msgLoginUsername
+    INT 21H
+
+    LEA SI, loginUsername
+    CALL INPUT_USERNAME
+
+    ; Ask password
+    MOV AH, 09H
+    LEA DX, msgLoginPassword
+    INT 21H
+
+    LEA SI, loginPassword
+    CALL INPUT_PASSWORD
+
+    ; Compare username
+    LEA SI, loginUsername
+    LEA DI, registerUsername
+
+    CALL COMPARE_STRING
+
+    CMP AL, 0
+    JNE LOGIN_FAILED
+
+    ; Compare password
+    LEA SI, loginPassword
+    LEA DI, registerPassword
+
+    CALL COMPARE_STRING
+
+    CMP AL, 0
+    JNE LOGIN_FAILED
+
+    ; Login successful
+    MOV AH, 09H
+    LEA DX, msgLoginSuccess
+    INT 21H
+
+    RET
+
+
+LOGIN_FAILED:
+
+    MOV AH, 09H
+    LEA DX, msgLoginFail
+    INT 21H
+
+    DEC attempts
+
+    CMP attempts, 0
+    JE LOGIN_LOCKED
+
+    MOV AH, 09H
+    LEA DX, msgAttempts
+    INT 21H
+
+    ; Convert number to ASCII
+    MOV DL, attempts
+    ADD DL, '0'
+
+    MOV AH, 02H
+    INT 21H
+
+    JMP LOGIN_ATTEMPT
+
+
+LOGIN_LOCKED:
+
+    MOV AH, 09H
+    LEA DX, msgLocked
+    INT 21H
+
+    RET
+
+LOGIN ENDP
+
+
+; INPUT USERNAME
+INPUT_USERNAME PROC
+
+INPUT_LOOP_U:
+
+    MOV AH, 0AH
+    LEA DX, registerUsername
+    INT 21H
+
+    MOV AL, [SI+2]
+    ; CHECK A-Z
+    CMP AL, 'A'
+    JB CHECK_LOWERCASE_U
+
+    CMP AL, 'Z'
+    JBE VALID_CHARACTER_U
+
+
+    ; CHECK a-z
+CHECK_LOWERCASE_U:
+
+    CMP AL, 'a'
+    JB CHECK_NUMBER_U
+
+    CMP AL, 'z'
+    JBE VALID_CHARACTER_U
+
+
+    ; CHECK 0-9
+CHECK_NUMBER_U:
+
+    CMP AL, '0'
+    JB INVALID_CHARACTER_U
+
+    CMP AL, '9'
+    JBE VALID_CHARACTER_U
+
+
+    ; INVALID CHARACTER
+INVALID_CHARACTER_U:
+
+    ; Display invalid message
+    MOV AH, 09H
+    LEA DX, msgInvalidUsername
+    INT 21H
+
+    ; Start the username again
+    MOV AH, 09H
+    LEA DX, msgRegisterUser
+    JMP INPUT_LOOP_U
+
+    ; VALID CHARACTER
+VALID_CHARACTER_U:
+
+    ; Store character
+    MOV [SI], AL
+    INC SI
+
+    JMP INPUT_LOOP_U
+
+    ; ENTER PRESSED
+INPUT_DONE_U:
+    RET
+
+INPUT_USERNAME ENDP
+
+; INPUT PASSWORD
+INPUT_PASSWORD PROC
+
+;CLEAR BUFFER
+
+INPUT_LOOP_P:
+
+    MOV AH, 0AH
+    LEA DX, registerPassword
+    INT 21H
+
+    MOV AL, [SI]
+    ; CHECK A-Z
+    CMP AL, 'A'
+    JB CHECK_LOWERCASE_P
+
+    CMP AL, 'Z'
+    JBE VALID_CHARACTER_P
+
+
+    ; CHECK a-z
+CHECK_LOWERCASE_P:
+
+    CMP AL, 'a'
+    JB CHECK_NUMBER_P
+
+    CMP AL, 'z'
+    JBE VALID_CHARACTER_P
+
+
+    ; CHECK 0-9
+CHECK_NUMBER_P:
+
+    CMP AL, '0'
+    JB INVALID_CHARACTER_P
+
+    CMP AL, '9'
+    JBE VALID_CHARACTER_P
+
+
+    ; INVALID CHARACTER
+INVALID_CHARACTER_P:
+
+    ; Display invalid message
+    MOV AH, 09H
+    LEA DX, msgInvalidPassword
+    INT 21H
+
+    ; Start the password again
+    MOV AH, 09H
+    LEA DX, msgRegisterPassword
+    JMP INPUT_LOOP_P
+
+
+    ; VALID CHARACTER
+VALID_CHARACTER_P:
+
+    ; Store character
+    MOV [SI], AL
+    INC SI
+
+    JMP INPUT_LOOP_P
+
+    ; ENTER PRESSED
+INPUT_DONE_P:
+
+    RET
+
+INPUT_PASSWORD ENDP
+
+
+; COMPARE STRING
+
+COMPARE_STRING PROC
+
+COMPARE_LOOP:
+
+    MOV BX, 0
+    MOV BL, [SI]
+    MOV BH, [DI]
+
+    CMP BL, BH
+    JNE NOT_EQUAL
+
+    CMP BL, '$'
+    JE EQUAL
+    
+    INC SI
+    INC DI
+
+    JNE COMPARE_LOOP
+
+EQUAL:
+
+    MOV AL, 0
+    RET
+
+
+NOT_EQUAL:
+
+    MOV AL, 1
+    RET
+
+COMPARE_STRING ENDP
+
+END MAIN
