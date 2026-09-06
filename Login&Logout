@@ -173,7 +173,7 @@
                      DB "     Seat Reservation - Data Entry",13,10
                      DB "======================================",13,10,'$'
     
-    msgAskCustomerName DB 13,10,"Enter customer name: $"
+    msgAskCustomerName DB 13,10,"Enter customer name (or B to go back): $"
     msgAskMovieName DB 13,10,"Enter movie name (or B to go back): $"
     msgAskSeatNumber DB 13,10,"Enter seat number (1-100) (or B to go back): $"
     msgAskTicketType DB 13,10,"Enter ticket type: ",13,10
@@ -244,6 +244,8 @@
                           DB 13,10,"=========================================",13,10,'$'
     displayTotalRes  DB "Total Reservations Made : $"
     displayTotalEarn DB "Total Earnings (RM)      : $"
+
+    msgContinue DB 13,10,"Press Y to continue: $"
 
 
 ;MODULE 7: INPUT VALIDATION
@@ -1363,7 +1365,7 @@ DATA_ENTRY_NAME:
     JE DATA_ENTRY_NAME
     CMP AL, 2
     JNE DATA_ENTRY_NAME_OK
-    JMP DATA_ENTRY_NAME_FIRST
+    RET
 DATA_ENTRY_NAME_OK:
 
 DATA_ENTRY_DAY:
@@ -1465,12 +1467,6 @@ DATA_NO_CARRY:
     RET
 DATA_ENTRY_START_JMP:
     JMP DATA_ENTRY_START
-
-DATA_ENTRY_NAME_FIRST:
-    MOV AH, 09H
-    LEA DX, msgFirstStep
-    INT 21H
-    JMP DATA_ENTRY_NAME
 
 DATA_ENTRY_SEAT_TAKEN:
     MOV AH, 09H
@@ -2240,6 +2236,9 @@ SUM_TICKET_PRINT:
     MOV AH, 09H
     LEA DX, newline
     INT 21H
+
+    LEA DX, msgContinue
+    CALL CONFIRM_ACTION
 
 SUMMARY_DONE:
     POP SI
