@@ -2,7 +2,7 @@
 .STACK              ; ALLOCATE 256 BYTES FOR THE STACK
 .DATA               ; BEGINNING OF THE DATA SEGMENT
 
-;MODULE 1: LOGIN & LOGOUT
+    ;MODULE 1: LOGIN & LOGOUT
     registerUsername DB 20
                      DB ?
                      DB 21 DUP('$')
@@ -23,7 +23,7 @@
 
     msgTitle DB 13,10
               DB "================================",13,10
-              DB "       SEAT RESERVATION SYSTEM",13,10
+              DB "    SEAT RESERVATION SYSTEM",13,10
               DB "================================",13,10,'$'
 
     msgAskLogin DB 13,10
@@ -35,7 +35,7 @@
                 DB "Enter your username and password.",13,10,'$'
     msgRegisterUser DB 13,10,"Enter your username: $"
     msgRegisterPassword DB 13,10,"Enter your password (or B to go back): $"
-    msgInvalidUsername DB 13,10,"Invalid character. Please only enter letters or numbers. $"
+    msgInvalidUsername DB 13,10,"Invalid character. Please only enter letters or numbers.",13,10,'$'
     msgInvalidPassword DB 13,10,"Invalid character. Please only enter letters, numbers or special characters (no spaces or '$')." ,13,10,'$'
 
     msgLoginUsername DB 13,10,"Enter your username: $"
@@ -63,46 +63,136 @@
     
     newline DB 13,10,'$'
 
+;MODULE 2 : MAIN MENU
+    main_title DB 13,10
+                 DB 13,10, "========================================="
+                 DB 13,10, "      Cinema Seat Reservation System     "
+                 DB 13,10, "========================================="
+                 DB 13, 10, "1. View Seat Layout"
+                 DB 13, 10, "2. Reserve Seat"
+                 DB 13, 10, "3. Cancel Reservation"
+                 DB 13, 10, "4. Calculate Payment"
+                 DB 13, 10, "5. View Reservation Summary"
+                 DB 13, 10, "6. Logout"
+                 DB 13, 10, "Enter option (1-6): $"
+    msgInvalidOption DB 13,10, "Invalid option. Please enter a number between 1 and 6.",13,10,'$'
+
+;DAY / TIME SLOT
+    dayNumber DB 20,?,21 DUP('$')      ; day chosen for the CURRENT reservation
+    slotNumber DB 20,?,21 DUP('$')     ; slot chosen for the CURRENT reservation
+    viewDay DB 20,?,21 DUP('$')        ; day chosen when viewing the layout
+    viewSlot DB 20,?,21 DUP('$')       ; slot chosen when viewing the layout
+    cancelDay DB 20,?,21 DUP('$')      ; day chosen when cancelling
+    cancelSlot DB 20,?,21 DUP('$')     ; slot chosen when cancelling
+
+    daySlotOffset DW ?
+    slotEndOffset DW ?
+
+    msgAskDay DB 13,10,"Select day:",13,10
+              DB " 1 - Day 1",13,10
+              DB " 2 - Day 2",13,10
+              DB " 3 - Day 3",13,10
+              DB "Enter your choice (1-3) (or B to go back): $"
+
+    msgAskSlot DB 13,10,"Select time slot:",13,10
+               DB "  1 - 10:00",13,10
+               DB "  2 - 11:00",13,10
+               DB "  3 - 12:00",13,10
+               DB "  4 - 13:00",13,10
+               DB "  5 - 14:00",13,10
+               DB "  6 - 15:00",13,10
+               DB "  7 - 16:00",13,10
+               DB "  8 - 17:00",13,10
+               DB "  9 - 18:00",13,10
+               DB " 10 - 19:00",13,10
+               DB " 11 - 20:00",13,10
+               DB " 12 - 21:00",13,10
+               DB " 13 - 22:00",13,10
+               DB " 14 - 23:00",13,10
+               DB " 15 - 00:00",13,10
+               DB "Enter your choice (1-15) (or B to go back): $"
+
+    msgInvalidDay  DB 13,10,"Invalid input. Please enter 1, 2, or 3.",13,10,'$'
+    msgInvalidSlot DB 13,10,"Invalid input. Please enter a number between 1 and 15.",13,10,'$'
+
+    ; Fixed-width (6 bytes each, including the '$') lookup table of slot times,
+    ; indexed as (slotNumber-1)*6
+    slotTimes DB "10:00$","11:00$","12:00$","13:00$","14:00$","15:00$"
+              DB "16:00$","17:00$","18:00$","19:00$","20:00$","21:00$"
+              DB "22:00$","23:00$","00:00$"
+
+    displayDay  DB "Day               : $"
+    displaySlot DB "Time Slot         : $"
+
+;VIEW_SEAT_LAYOUT section
+    ;0 = Available, 1 = Reserved
+    seat_map DB 4500 DUP('0')
+
+    msgLayoutHeader DB 13,10,13,10,"======================================="
+                    DB 13,10,"          CINEMA SEAT LAYOUT           "
+                    DB 13,10,"======================================="
+                    DB 13,10,"       [ S C R E E N   H E R E ]          "
+                    DB 13,10,"---------------------------------------",13,10,'$'
+    msgAvailable    DB "      [O]=Available  [X]=Reserved",13,10,13,10,'$'
+
+;CANCEL_RESERVE section
+    cancelSeatNumber DB 20,?,21 DUP('$')
+    cancelQty DB 20,?,21 DUP ('$')
+    msgCancelTitle DB 13,10,13,10, "========================================="
+                    DB 13,10,"           CANCEL RESERVATION            "
+                    DB 13,10,"=========================================",13,10,'$'
+    msgAskCancelSeat DB 13,10, "Enter starting seat number to cancel (1-100): $"
+    msgAskCancelQty  DB 13,10,"Enter number of seats to cancel (1-100): $"
+    msgCancelSuccess DB 13,10,13,10,"Reservation successfully cancelled!",13,10,'$'
+    msgSeatTaken     DB 13,10,"One or more of those seats are already reserved for this day/slot. Please pick again.",13,10,'$'
+                    
+;extra
+    msgCheckLayoutTips DB 13,10, "Please refer to View Seat Layout for current occupied seats.",13,10,'$'
+    msgDiscountTips DB 13,10,"5% discount will be given if more than 5 People are reserved.",13,10,'$'
+
+    
+
+
 ;MODULE 3: DATA ENTRY
     customerName DB 20
                  DB ?
                  DB 21 DUP('$')
-    movieName DB 20
-                DB ?
-                DB 21 DUP('$')
-    seatNumber DB 20
+    movieName    DB "Movie$"
+    seatNumber   DB 20
                  DB ?
                  DB 21 DUP('$')
-    ticketType DB 20
+    ticketType  DB 20
                 DB ?
                 DB 21 DUP('$')
-    quantity DB 20
-               DB ?
-               DB 21 DUP('$')
+    quantity    DB 20
+                DB ?
+                   DB 21 DUP('$')
     
     msgDataEntryTitle DB 13,10
                      DB "======================================",13,10
                      DB "     Seat Reservation - Data Entry",13,10
                      DB "======================================",13,10,'$'
     
-    msgAskCustomerName DB 13,10,"Enter customer name / ID: $"
+    msgAskCustomerName DB 13,10,"Enter customer name: $"
     msgAskMovieName DB 13,10,"Enter movie name (or B to go back): $"
-    msgAskSeatNumber DB 13,10,"Enter seat number (1-50) (or B to go back): $"
+    msgAskSeatNumber DB 13,10,"Enter seat number (1-100) (or B to go back): $"
     msgAskTicketType DB 13,10,"Enter ticket type: ",13,10
-                     DB " 1 - Adult",13,10
-                     DB " 2 - Child",13,10
-                     DB " 3 - Senior",13,10
+                     DB " 1 - Adult -> RM30",13,10
+                     DB " 2 - Child -> RM20",13,10
+                     DB " 3 - Senior -> RM25",13,10
                      DB "Enter your choice (1-3) (or B to go back): $"
-    msgAskQuantity DB 13,10,"Enter quantity of tickets (1-10) (or B to go back): $"
+    msgAskQuantity DB 13,10,"Enter quantity of tickets (1-100) (or B to go back): $"
 
     msgInvalidName  DB 13,10,"Invalid input. Please only enter letters and spaces.",13,10,'$'
     msgInvalidMovie DB 13,10,"Invalid input. Please only enter letters, numbers and spaces.",13,10,'$'
-    msgInvalidSeat  DB 13,10,"Invalid input. Please enter a seat number between 1 and 50.",13,10,'$'
+    msgInvalidSeat  DB 13,10,"Invalid input. Please enter a seat number between 1 and 100.",13,10,'$'
     msgInvalidTicket DB 13,10,"Invalid input. Please enter 1, 2, or 3.",13,10,'$'
-    msgInvalidQuantity DB 13,10,"Invalid input. Please enter a quantity between 1 and 10.",13,10,'$'
+    msgInvalidQuantity DB 13,10,"Invalid input. Please enter a quantity between 1 and 100.",13,10,'$'
 
     msgConfirmDetails DB 13,10,13,10,"---- Please confirm your reservation ----",13,10,'$'
     msgConfirmPrompt  DB 13,10,"Are these details correct? (Y/N): $"
+    msgConfirmPayment DB 13,10,"Do you want to make payment? (Y/N): $"
+    msgPaymentSucceccful DB 13,10,"Thank you for your payment.",13,10,'$'
     msgAgainPrompt    DB 13,10,13,10,"Do you want to make another reservation? (Y/N): $"
 
     displayCustomer DB "Customer Name/ID : $"
@@ -115,6 +205,47 @@
     msgChild  DB "Child$"
     msgSenior DB "Senior$"
 
+    
+
+
+;MODULE 4: CALCULATION
+    adultTicket DW 30
+    childTicket DW 20
+    seniorTicket DW 25
+    serviceTax DW 2
+    basePrice DW 0
+    discount DW 0
+    totalPayment DW 0
+    valQuantity DW 0
+
+    msgCalcTitle    DB 13,10,13,10,"========================================="
+                    DB 13,10,"           PAYMENT CALCULATION             "
+                    DB 13,10,"=========================================",13,10,'$'
+    msgCalcPrice     DB " Base Ticket Price  : RM$"
+    msgCalcQty      DB " Quantity           : RM$"
+    msgCalcSubtotal DB " Subtotal           : RM$"
+    msgCalcDiscount DB " Bulk Discount (>=5): -RM$"
+    msgCalcTax      DB " Service Tax        : +RM$"
+    msgCalcLine     DB " -----------------------------------------",13,10,'$'
+    msgCalcTotal    DB " Total Payment      : RM$"
+    msgNoData       DB 13,10,"No data found. Please reserve a seat first.",13,10,'$'
+
+;MODULE 6 : REPORT
+    msgSummaryTitle DB 13,10,13,10,"========================================="
+                    DB 13,10,"           RESERVATION SUMMARY           "
+                    DB 13,10,"=========================================",13,10,'$'
+
+    totalEarningsLo DW 0        ; low word of 32-bit running revenue total
+    totalEarningsHi DW 0        ; high word (needed because totals can exceed 65535)
+    totalReservations DW 0      ; count of reservations made this run
+
+    msgSystemSummaryTitle DB 13,10,13,10,"========================================="
+                          DB 13,10,"       SYSTEM-WIDE RESERVATION SUMMARY   "
+                          DB 13,10,"=========================================",13,10,'$'
+    displayTotalRes  DB "Total Reservations Made : $"
+    displayTotalEarn DB "Total Earnings (RM)      : $"
+
+
 ;MODULE 7: INPUT VALIDATION
     msgBlank DB 13,10
                    DB "Invalid input. You must enter a value instead of leaving it blank.",13,10,'$'
@@ -124,13 +255,17 @@
     confirmPromptPtr DW ?          ; scratch pointer used by CONFIRM_ACTION
 
 
+
+    
+
+
+
 .CODE               ; BEGINNING OF CODE SEGMENT
-MAIN PROC
+MAIN PROC                                                    
+MOV AX, @DATA       ; Initialize DS register 
+MOV DS, AX
 
-    MOV AX, @DATA
-    MOV DS, AX
-
-    MOV AH, 09H
+ MOV AH, 09H
     LEA DX, msgTitle
     INT 21H
 
@@ -169,7 +304,7 @@ LOGIN_:
     JE MAIN_END             ;LOCKED OUT & EXIT
 
 MAIN_LOOP:
-    CALL DATA_ENTRY
+    CALL MAIN_MENU
 
     LEA DX, msgLogoutPrompt
     CALL CONFIRM_ACTION
@@ -714,6 +849,207 @@ CHECK_RANGE_DONE:
     RET
 CHECK_RANGE ENDP
 
+CALC_DAYSLOT_OFFSET PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+    PUSH DI
+
+    MOV CL, [SI+1]
+    MOV CH, 0
+    ADD SI, 2
+    CALL STR_TO_NUM
+    DEC AX
+    MOV CX, 1500
+    MUL CX
+    MOV BX, AX
+
+    MOV SI, DI
+    MOV CL, [SI+1]
+    MOV CH, 0
+    ADD SI, 2
+    CALL STR_TO_NUM
+    DEC AX
+    MOV CX, 100
+    MUL CX
+    ADD BX, AX
+
+    MOV daySlotOffset, BX
+    ADD BX, 100
+    MOV slotEndOffset, BX
+
+    POP DI
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+CALC_DAYSLOT_OFFSET ENDP
+
+PRINT_SLOT_TIME PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    LEA SI, slotNumber
+    MOV CL, [SI+1]
+    MOV CH, 0
+    ADD SI, 2
+    CALL STR_TO_NUM
+    DEC AX
+    MOV BX, 6
+    MUL BX
+    MOV SI, AX
+    LEA DX, slotTimes
+    ADD DX, SI
+    MOV AH, 09H
+    INT 21H
+
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+PRINT_SLOT_TIME ENDP
+
+INPUT_DAY PROC
+    PUSH SI
+    PUSH CX
+
+    MOV AH, 0CH
+    MOV AL, 0AH
+    INT 21H
+
+    MOV SI, DX
+    CMP BYTE PTR [SI+1], 0
+    JNE INPUTDAY_CHECKNUM
+
+    MOV AH, 09H
+    LEA DX, msgBlank
+    INT 21H
+    MOV AL, 1
+    JMP INPUTDAY_DONE
+INPUTDAY_CHECKNUM:
+    MOV CL, [SI+1]
+    MOV CH, 0
+    ADD SI, 2
+
+    CALL CHECK_IS_BACK
+    CMP AL, 1
+    JE INPUTDAY_BACK
+
+    CALL VALID_NUMERIC
+    CMP AL, 0
+    JE INPUTDAY_CHECKRANGE
+
+    MOV AH, 09H
+    LEA DX, msgInvalidNumeric
+    INT 21H
+    MOV AL, 1
+    JMP INPUTDAY_DONE
+INPUTDAY_CHECKRANGE:
+    MOV BX, DX
+    MOV CL, [BX+1]
+    MOV CH, 0
+    MOV SI, BX
+    ADD SI, 2
+    CALL STR_TO_NUM
+
+    MOV BX, 1
+    MOV CX, 3
+    CALL CHECK_RANGE
+
+    CMP AL, 0
+    JE INPUTDAY_VALID
+
+    MOV AH, 09H
+    LEA DX, msgInvalidDay
+    INT 21H
+    MOV AL, 1
+    JMP INPUTDAY_DONE
+INPUTDAY_BACK:
+    MOV AL, 2
+    JMP INPUTDAY_DONE
+INPUTDAY_VALID:
+    MOV AL, 0
+INPUTDAY_DONE:
+    POP CX
+    POP SI
+    RET
+INPUT_DAY ENDP
+
+INPUT_SLOT PROC
+    PUSH SI
+    PUSH CX
+
+    MOV AH, 0CH
+    MOV AL, 0AH
+    INT 21H
+
+    MOV SI, DX
+    CMP BYTE PTR [SI+1], 0
+    JNE INPUTSLOT_CHECKNUM
+
+    MOV AH, 09H
+    LEA DX, msgBlank
+    INT 21H
+    MOV AL, 1
+    JMP INPUTSLOT_DONE
+INPUTSLOT_CHECKNUM:
+    MOV CL, [SI+1]
+    MOV CH, 0
+    ADD SI, 2
+
+    CALL CHECK_IS_BACK
+    CMP AL, 1
+    JE INPUTSLOT_BACK
+
+    CALL VALID_NUMERIC
+    CMP AL, 0
+    JE INPUTSLOT_CHECKRANGE
+
+    MOV AH, 09H
+    LEA DX, msgInvalidNumeric
+    INT 21H
+    MOV AL, 1
+    JMP INPUTSLOT_DONE
+INPUTSLOT_CHECKRANGE:
+    MOV BX, DX
+    MOV CL, [BX+1]
+    MOV CH, 0
+    MOV SI, BX
+    ADD SI, 2
+    CALL STR_TO_NUM
+
+    MOV BX, 1
+    MOV CX, 15
+    CALL CHECK_RANGE
+
+    CMP AL, 0
+    JE INPUTSLOT_VALID
+
+    MOV AH, 09H
+    LEA DX, msgInvalidDay
+    INT 21H
+    MOV AL, 1
+    JMP INPUTSLOT_DONE
+INPUTSLOT_BACK:
+    MOV AL, 2
+    JMP INPUTSLOT_DONE
+INPUTSLOT_VALID:
+    MOV AL, 0
+INPUTSLOT_DONE:
+    POP CX
+    POP SI
+    RET
+INPUT_SLOT ENDP
+
 CONFIRM_ACTION PROC
     MOV confirmPromptPtr, DX
 CONFIRM_LOOP:
@@ -750,6 +1086,266 @@ CONFIRM_NO:
 
 CONFIRM_ACTION ENDP
 
+;MODULE 2 : MAIN MENU
+MAIN_MENU PROC
+MAIN_MENU_START:
+    MOV AH, 09H
+    LEA DX, main_title
+    INT 21H
+
+    MOV AH, 0CH
+    MOV AL, 01H
+    INT 21H
+
+    CMP AL, '1'
+    JE OPTION_1_LAYOUT
+    CMP AL, '2'
+    JE OPTION_2_RESERVE
+    CMP AL, '3'
+    JE OPTION_3_CANCEL
+    CMP AL, '4'
+    JE OPTION_4_CALCULATE
+    CMP AL, '5'
+    JE OPTION_5_SUMMARY
+    CMP AL, '6'
+    JE OPTION_6_LOGOUT
+
+    ;Invalid Option Choice
+    MOV AH, 09H
+    LEA DX, msgInvalidOption
+    INT 21H
+    JMP MAIN_MENU_START
+
+OPTION_1_LAYOUT:
+    CALL VIEW_SEAT_LAYOUT      
+    JMP MAIN_MENU_START
+
+OPTION_2_RESERVE:
+    CALL DATA_ENTRY             
+    JMP MAIN_MENU_START
+
+OPTION_3_CANCEL:
+    CALL CANCEL_RESERVATION      
+    JMP MAIN_MENU_START
+
+OPTION_4_CALCULATE:
+    CALL CALCULATE_PAYMENT      
+    JMP MAIN_MENU_START
+
+OPTION_5_SUMMARY:
+    CALL VIEW_SUMMARY          
+    JMP MAIN_MENU_START
+
+OPTION_6_LOGOUT:
+    RET                         ; Exit 
+MAIN_MENU ENDP
+
+VIEW_SEAT_LAYOUT PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+VSL_DAY:
+    MOV AH, 09H
+    LEA DX, msgAskDay
+    INT 21H
+    LEA DX, viewDay
+    CALL INPUT_DAY
+    CMP AL, 1
+    JE VSL_DAY
+    CMP AL, 2
+    JE VSL_CANCELLED
+
+VSL_SLOT:
+    MOV AH, 09H
+    LEA DX, msgAskSlot
+    INT 21H
+    LEA DX, viewSlot
+    CALL INPUT_SLOT
+    CMP AL, 1
+    JE VSL_SLOT
+    CMP AL, 2
+    JE VSL_DAY
+
+    LEA SI, viewDay
+    LEA DI, viewSlot
+    CALL CALC_DAYSLOT_OFFSET
+
+; Display header
+    MOV AH, 09H
+    LEA DX, msgLayoutHeader
+    INT 21H
+    MOV AH, 09H
+    LEA DX, msgAvailable
+    INT 21H
+
+;print layout
+    LEA SI, seat_map
+    ADD SI, daySlotOffset
+    MOV CX, 10
+
+ROW_LOOP:
+    PUSH CX
+    MOV CX,10
+
+SEAT_LOOP:
+    MOV AL, [SI]
+    CMP AL, '0'
+    JE SEAT_OPEN 
+
+SEAT_TAKEN:
+    MOV AH, 02H
+    MOV DL, '['
+    INT 21H
+    MOV DL, 'X'
+    INT 21H
+    MOV DL, ']'
+    INT 21H
+    JMP NEXT_SEAT
+
+SEAT_OPEN:
+    MOV AH, 02H
+    MOV DL, '['
+    INT 21H
+    MOV DL, 'O'
+    INT 21H
+    MOV DL, ']'
+    INT 21H
+
+NEXT_SEAT:
+    MOV AH, 02H
+    MOV DL, ' '
+    INT 21H
+
+    INC SI
+    LOOP SEAT_LOOP
+;Next row
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    POP CX
+    LOOP ROW_LOOP
+
+VSL_CANCELLED:
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+
+    RET
+VIEW_SEAT_LAYOUT ENDP
+
+CANCEL_RESERVATION PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    MOV AH,09H
+    LEA DX, msgCancelTitle
+    INT 21H
+
+ASK_CANCEL_DAY:
+    MOV AH, 09H
+    LEA DX, msgAskDay
+    INT 21H
+    LEA DX, cancelDay
+    CALL INPUT_DAY
+    CMP AL, 1
+    JE ASK_CANCEL_DAY
+    CMP AL, 2
+    JNE ASK_CANCEL_DAY_OK
+    JMP CANCEL_DONE
+ASK_CANCEL_DAY_OK:
+
+ASK_CANCEL_SLOT:
+    MOV AH, 09H
+    LEA DX, msgAskSlot
+    INT 21H
+    LEA DX, cancelSlot
+    CALL INPUT_SLOT
+    CMP AL, 1
+    JE ASK_CANCEL_SLOT
+    CMP AL, 2
+    JE ASK_CANCEL_DAY
+
+ASK_CANCEL_SEAT:
+    MOV AH, 09H
+    LEA DX, msgAskCancelSeat
+    INT 21H
+
+    LEA DX, cancelSeatNumber
+    CALL INPUT_SEAT         
+    CMP AL, 1
+    JE ASK_CANCEL_SEAT
+    CMP AL, 2
+    JE ASK_CANCEL_SLOT
+
+ASK_CANCEL_QTY:
+    MOV AH, 09H
+    LEA DX, msgAskCancelQty
+    INT 21H
+
+    LEA DX, cancelQty
+    CALL INPUT_QUANTITY     
+    CMP AL, 1
+    JE ASK_CANCEL_QTY
+    CMP AL, 2
+    JE ASK_CANCEL_SEAT
+
+    LEA SI, cancelDay
+    LEA DI, cancelSlot
+    CALL CALC_DAYSLOT_OFFSET
+
+    LEA SI, cancelSeatNumber
+    MOV CL, [SI+1]          
+    MOV CH, 0               
+    ADD SI, 2               
+    CALL STR_TO_NUM         
+    DEC AX
+    ADD AX, daySlotOffset                  
+    MOV BX, AX              
+
+
+    LEA SI, cancelQty
+    MOV CL, [SI+1]          
+    MOV CH, 0               
+    ADD SI, 2               
+    CALL STR_TO_NUM         
+    MOV CX, AX              
+
+    LEA SI, seat_map
+    ADD SI, BX              
+
+CLEAR_LOOP:
+    CMP BX, slotEndOffset    
+    JAE CANCEL_SUCCESS
+
+    MOV BYTE PTR [SI], '0'  
+    INC SI                  
+    INC BX                  
+    LOOP CLEAR_LOOP
+
+CANCEL_SUCCESS:
+    MOV AH, 09H
+    LEA DX, msgCancelSuccess
+    INT 21H
+
+CANCEL_DONE:
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET                     
+CANCEL_RESERVATION ENDP
+   
+
 ;MODULE 3: DATA ENTRY
 DATA_ENTRY PROC
 DATA_ENTRY_START:
@@ -766,20 +1362,36 @@ DATA_ENTRY_NAME:
     CMP AL, 1
     JE DATA_ENTRY_NAME
     CMP AL, 2
-    JE DATA_ENTRY_NAME_FIRST
+    JNE DATA_ENTRY_NAME_OK
+    JMP DATA_ENTRY_NAME_FIRST
+DATA_ENTRY_NAME_OK:
 
-DATA_ENTRY_MOVIE:
+DATA_ENTRY_DAY:
     MOV AH, 09H
-    LEA DX, msgAskMovieName
+    LEA DX, msgAskDay
     INT 21H
-    LEA DX, movieName
-    CALL INPUT_MOVIE
+    LEA DX, dayNumber
+    CALL INPUT_DAY
     CMP AL, 1
-    JE DATA_ENTRY_MOVIE
+    JE DATA_ENTRY_DAY
     CMP AL, 2
     JE DATA_ENTRY_NAME
 
+DATA_ENTRY_SLOT:
+    MOV AH, 09H
+    LEA DX, msgAskSlot
+    INT 21H
+    LEA DX, slotNumber
+    CALL INPUT_SLOT
+    CMP AL, 1
+    JE DATA_ENTRY_SLOT
+    CMP AL, 2
+    JE DATA_ENTRY_DAY
+
 DATA_ENTRY_SEAT:
+    MOV AH, 09H
+    LEA DX, msgCheckLayoutTips
+    INT 21H
     MOV AH, 09H
     LEA DX, msgAskSeatNumber
     INT 21H
@@ -788,7 +1400,7 @@ DATA_ENTRY_SEAT:
     CMP AL, 1
     JE DATA_ENTRY_SEAT
     CMP AL, 2
-    JE DATA_ENTRY_MOVIE
+    JE DATA_ENTRY_NAME
 
 DATA_ENTRY_TICKET:
     MOV AH, 09H
@@ -803,6 +1415,12 @@ DATA_ENTRY_TICKET:
 
 DATA_ENTRY_QUANTITY:
     MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+    MOV AH, 09H
+    LEA DX, msgDiscountTips
+    INT 21H
+    MOV AH, 09H
     LEA DX, msgAskQuantity
     INT 21H
     LEA DX, quantity
@@ -812,12 +1430,32 @@ DATA_ENTRY_QUANTITY:
     CMP AL, 2
     JE DATA_ENTRY_TICKET
 
+    LEA SI, dayNumber
+    LEA DI, slotNumber
+    CALL CALC_DAYSLOT_OFFSET
+
+    CALL CHECK_SEAT_OVERLAP
+    CMP AL, 1
+    JE DATA_ENTRY_SEAT_TAKEN
+
     CALL DISPLAY_RESERVATION
 
     LEA DX, msgConfirmPrompt
     CALL CONFIRM_ACTION
     CMP AL, 'N'
     JE DATA_ENTRY_START_JMP
+
+    CALL UPDATE_SEAT_MAP
+
+    CALL CALCULATE_PAYMENT
+
+    MOV AX, totalPayment
+    ADD totalEarningsLo, AX
+    JNC DATA_NO_CARRY
+    INC totalEarningsHi
+
+DATA_NO_CARRY:
+    INC totalReservations
 
     LEA DX, msgAgainPrompt
     CALL CONFIRM_ACTION
@@ -833,6 +1471,12 @@ DATA_ENTRY_NAME_FIRST:
     LEA DX, msgFirstStep
     INT 21H
     JMP DATA_ENTRY_NAME
+
+DATA_ENTRY_SEAT_TAKEN:
+    MOV AH, 09H
+    LEA DX, msgSeatTaken
+    INT 21H
+    JMP DATA_ENTRY_SEAT
 
 DATA_ENTRY ENDP
 
@@ -881,52 +1525,6 @@ INPUTNAME_DONE:
     RET
 INPUT_NAME ENDP
 
-
-INPUT_MOVIE PROC
-    PUSH SI
-    PUSH CX
-    MOV AH, 0CH
-    MOV AL, 0AH
-    INT 21H
-
-    MOV SI, DX
-    CMP BYTE PTR [SI+1], 0
-    JNE INPUTMOVIE_CHECK
-
-    MOV AH, 09H
-    LEA DX, msgBlank
-    INT 21H
-    MOV AL, 1
-    JMP INPUTMOVIE_DONE
-INPUTMOVIE_CHECK:
-    MOV CL, [SI+1]
-    MOV CH, 0
-    ADD SI, 2
-
-    CALL CHECK_IS_BACK
-    CMP AL, 1
-    JE INPUTMOVIE_BACK
-
-    CALL VALID_LETTER_NUM_SPACE
-    CMP AL, 0
-    JE INPUTMOVIE_VALID
-
-    MOV AH, 09H
-    LEA DX, msgInvalidMovie
-    INT 21H
-    MOV AL, 1
-    JMP INPUTMOVIE_DONE
-INPUTMOVIE_BACK:
-    MOV AL, 2
-    JMP INPUTMOVIE_DONE
-INPUTMOVIE_VALID:
-    MOV AL, 0
-INPUTMOVIE_DONE:
-    POP CX
-    POP SI
-    RET
-INPUT_MOVIE ENDP
-
 INPUT_SEAT PROC
     PUSH SI
     PUSH CX
@@ -970,7 +1568,7 @@ INPUTSEAT_CHECKRANGE:
     CALL STR_TO_NUM
    
     MOV BX, 1
-    MOV CX, 50
+    MOV CX, 100
     CALL CHECK_RANGE
     
     CMP AL, 0
@@ -1100,7 +1698,7 @@ INPUTQUANTITY_CHECKRANGE:
     CALL STR_TO_NUM
 
     MOV BX, 1
-    MOV CX, 10
+    MOV CX, 100
     CALL CHECK_RANGE
     
     CMP AL, 0
@@ -1122,6 +1720,111 @@ INPUTQUANTITY_DONE:
     RET
 INPUT_QUANTITY ENDP
 
+CHECK_SEAT_OVERLAP PROC
+    PUSH BX
+    PUSH CX
+    PUSH SI
+    
+    LEA SI, seatNumber
+    MOV CL, [SI+1]
+    MOV CH, 0
+    ADD SI, 2
+    CALL STR_TO_NUM
+    DEC AX
+    ADD AX, daySlotOffset
+    MOV BX, AX
+
+    LEA SI, quantity
+    MOV CL, [SI+1]
+    MOV CH, 0
+    ADD SI, 2
+    CALL STR_TO_NUM
+    MOV CX, AX
+
+    LEA SI, seat_map
+    ADD SI, BX
+
+CHECKSO_LOOP:
+    CMP BX, slotEndOffset
+    JAE CHECKSO_CLEAR
+    CMP BYTE PTR [SI], '1'
+    JE CHECKSO_OVERLAP
+    INC SI
+    INC BX
+    LOOP CHECKSO_LOOP
+
+CHECKSO_CLEAR:
+    MOV AL, 0
+    JMP CHECKSO_DONE
+
+CHECKSO_OVERLAP:
+    MOV AL, 1
+
+CHECKSO_DONE:
+    POP SI
+    POP CX
+    POP BX
+    RET
+
+CHECK_SEAT_OVERLAP ENDP
+
+UPDATE_SEAT_MAP PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    LEA SI, dayNumber
+    LEA DI, slotNumber
+    CALL CALC_DAYSLOT_OFFSET
+
+;convert seat number to index and reserve seats
+    LEA SI, seatNumber
+    MOV CL, [SI+1]          
+    MOV CH, 0
+    CMP CL, 0
+    JE UPDATE_DONE          
+
+    ADD SI, 2               
+    CALL STR_TO_NUM         
+    DEC AX         
+    ADD AX, daySlotOffset         
+    MOV BX, AX              
+
+;convert quantity to loop counter and reserve seats
+    LEA SI, quantity
+    MOV CL, [SI+1]          
+    MOV CH, 0
+    CMP CL, 0
+    JE UPDATE_DONE          
+
+    ADD SI, 2               
+    CALL STR_TO_NUM         
+    MOV CX, AX              
+
+    LEA SI, seat_map
+    ADD SI, BX              
+
+RESERVE_LOOP:
+    ; safety check
+    CMP BX, slotEndOffset
+    JAE UPDATE_DONE
+
+    MOV BYTE PTR [SI], '1'  
+    INC SI                  
+    INC BX                  
+    LOOP RESERVE_LOOP       
+
+UPDATE_DONE:
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+UPDATE_SEAT_MAP ENDP
+
 DISPLAY_RESERVATION PROC
     MOV AH, 09H
     LEA DX, msgConfirmDetails
@@ -1141,8 +1844,26 @@ DISPLAY_RESERVATION PROC
     LEA DX, displayMovie
     INT 21H
     MOV AH, 09H
-    LEA DX, movieName+2
+    LEA DX, movieName
     INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    MOV AH, 09H
+    LEA DX, displayDay
+    INT 21H
+    MOV AH, 09H
+    LEA DX, dayNumber+2
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    MOV AH, 09H
+    LEA DX, displaySlot
+    INT 21H
+    CALL PRINT_SLOT_TIME
     MOV AH, 09H
     LEA DX, newline
     INT 21H
@@ -1193,7 +1914,406 @@ TICKET:
     RET
 DISPLAY_RESERVATION ENDP
 
+;MODULE 4 : CALCULATION
+CALCULATE_PAYMENT PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+;check if data exists
+    LEA SI, quantity
+    MOV CL, [SI+1]         
+    MOV CH, 0
+    CMP CL, 0
+    JNE CALC_START
+
+;no data message
+    MOV AH, 09H
+    LEA DX, msgNoData       
+    INT 21H
+    JMP CALC_DONE
+
+CALC_START:
+;convert quantity string to number
+    ADD SI, 2
+    CALL STR_TO_NUM        
+    MOV valQuantity, AX
+
+;link ticket type to price
+    LEA BX, ticketType
+    MOV AL, [BX+2]          
+
+    CMP AL, '1'           
+    JE SET_PRICE_ADULT
+    CMP AL, '2'            
+    JE SET_PRICE_CHILD
 
 
+    MOV AX, seniorTicket    
+    MOV basePrice, AX       
+    JMP CALC_SUBTOTAL
+
+SET_PRICE_ADULT:
+    MOV AX, adultTicket     
+    MOV basePrice, AX
+    JMP CALC_SUBTOTAL
+
+SET_PRICE_CHILD:
+    MOV AX, childTicket    
+    MOV basePrice, AX
+
+CALC_SUBTOTAL:
+;subtotal = basePrice * quantity
+    MOV AX, basePrice
+    MUL valQuantity              
+    MOV basePrice, AX       
+
+;discount (if more than 5 tickets, 5% discount)
+    CMP valQuantity, 5
+    JAE APPLY_DISCOUNT
+    MOV discount, 0        
+    JMP CALC_TOTAL
+
+APPLY_DISCOUNT:
+    MOV discount, 5
+
+CALC_TOTAL:
+;total = subtotal - discount + serviceTax
+    MOV AX, basePrice
+    SUB AX, discount
+    ADD AX, serviceTax     
+    MOV totalPayment, AX
+
+;receipt output
+    MOV AH, 09H
+    LEA DX, msgCalcTitle   
+    INT 21H
+
+;display subtotal
+    LEA DX, msgCalcSubtotal 
+    INT 21H
+    MOV AX, basePrice
+    CALL PRINT_NUM
+    MOV AH, 09H
+    LEA DX, newline        
+    INT 21H
+
+;display discount
+    LEA DX, msgCalcDiscount 
+    INT 21H
+    MOV AX, discount
+    CALL PRINT_NUM
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+;display service tax
+    LEA DX, msgCalcTax     
+    INT 21H
+    MOV AX, serviceTax
+    CALL PRINT_NUM
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+;display line and total payment
+    LEA DX, msgCalcLine    
+    INT 21H
+    LEA DX, msgCalcTotal   
+    INT 21H
+    MOV AX, totalPayment
+    CALL PRINT_NUM
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    LEA DX, msgConfirmPrompt
+    CALL CONFIRM_ACTION
+    CMP AL, 'N'
+    JE CALC_DONE
+    LEA DX, msgConfirmPayment
+    CALL CONFIRM_ACTION
+    CMP AL, 'N'
+    JE CALC_DONE
+    
+    MOV AH, 09H
+    LEA DX, msgPaymentSucceccful
+    INT 21H
+
+CALC_DONE:
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+CALCULATE_PAYMENT ENDP
+
+CALC_PAYMENT_SILENT PROC
+    PUSH AX
+    PUSH BX
+    PUSH SI
+
+    LEA SI, quantity
+    MOV CL, [SI+1]
+    MOV CH, 0
+    ADD SI, 2
+    CALL STR_TO_NUM
+    MOV valQuantity, AX
+
+    LEA BX, ticketType
+    MOV AL, [BX+2]
+    CMP AL, '1'
+    JE CPS_ADULT
+    CMP AL, '2'
+    JE CPS_CHILD
+    MOV AX, seniorTicket
+    JMP CPS_SUBTOTAL
+CPS_ADULT:
+    MOV AX, adultTicket
+    JMP CPS_SUBTOTAL
+CPS_CHILD:
+    MOV AX, childTicket
+CPS_SUBTOTAL:
+    MUL valQuantity
+    MOV basePrice, AX
+
+    CMP valQuantity, 5
+    JAE CPS_DISCOUNT
+    MOV discount, 0
+    JMP CPS_TOTAL
+CPS_DISCOUNT:
+    MOV discount, 5
+CPS_TOTAL:
+    MOV AX, basePrice
+    SUB AX, discount
+    ADD AX, serviceTax
+    MOV totalPayment, AX
+
+    POP SI
+    POP BX
+    POP AX
+    RET
+CALC_PAYMENT_SILENT ENDP
+
+
+;MODULE 6 : REPORT
+VIEW_SUMMARY PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+;check if data exists
+    LEA SI, customerName
+    MOV CL, [SI+1]          
+    MOV CH, 0
+    CMP CL, 0
+    JNE SUMMARY_START
+
+;empty data message
+    MOV AH, 09H
+    LEA DX, msgNoData       
+    INT 21H
+    JMP SUMMARY_DONE
+
+SUMMARY_START:
+;summary title
+    MOV AH, 09H
+    LEA DX, msgSummaryTitle
+    INT 21H
+
+;customer details
+    ; Customer Name
+    MOV AH, 09H
+    LEA DX, displayCustomer
+    INT 21H
+    MOV AH, 09H
+    LEA DX, customerName+2  
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    ; Movie Name
+    MOV AH, 09H
+    LEA DX, displayMovie
+    INT 21H
+    MOV AH, 09H
+    LEA DX, movieName    
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    ; Day
+    MOV AH, 09H
+    LEA DX, displayDay
+    INT 21H
+    MOV AH, 09H
+    LEA DX, dayNumber+2
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    ; Slot
+    MOV AH, 09H
+    LEA DX, displaySlot
+    INT 21H
+    CALL PRINT_SLOT_TIME
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    ; Starting Seat Number
+    MOV AH, 09H
+    LEA DX, displaySeat
+    INT 21H
+    MOV AH, 09H
+    LEA DX, seatNumber+2   
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    ; Ticket Type
+    MOV AH, 09H
+    LEA DX, displayTicket
+    INT 21H
+    LEA BX, ticketType
+    MOV AL, [BX+2]       
+    CMP AL, '1'
+    JE SUM_TYPE_ADULT
+    CMP AL, '2'
+    JE SUM_TYPE_CHILD
+    LEA DX, msgSenior    
+    JMP SUM_TICKET_PRINT
+
+SUM_TYPE_ADULT:
+    LEA DX, msgAdult        
+    JMP SUM_TICKET_PRINT
+
+SUM_TYPE_CHILD:
+    LEA DX, msgChild       
+
+SUM_TICKET_PRINT:
+    MOV AH, 09H
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    ; Quantity
+    MOV AH, 09H
+    LEA DX, displayQty
+    INT 21H
+    MOV AH, 09H
+    LEA DX, quantity+2    
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+;SYSTEM-WIDE TOTALS
+    MOV AH, 09H
+    LEA DX, msgSystemSummaryTitle
+    INT 21H
+
+    MOV AH, 09H
+    LEA DX, displayTotalRes
+    INT 21H
+    MOV AX, totalReservations
+    CALL PRINT_NUM
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    MOV AH, 09H
+    LEA DX, displayTotalEarn
+    INT 21H
+    MOV AX, totalEarningsLo
+    MOV DX, totalEarningsHi
+    CALL PRINT_NUM32
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+SUMMARY_DONE:
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+VIEW_SUMMARY ENDP
+
+;convert number to ASCII
+PRINT_NUM PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+
+    MOV CX, 0               
+    MOV BX, 10              
+
+CONVERT_LOOP:
+    MOV DX, 0
+    DIV BX                  
+    PUSH DX                 
+    INC CX                  
+    CMP AX, 0
+    JNE CONVERT_LOOP
+
+PRINT_LOOP:
+    POP DX                  
+    ADD DL, '0'           
+    MOV AH, 02H            
+    INT 21H
+    LOOP PRINT_LOOP
+
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+PRINT_NUM ENDP
+
+PRINT_NUM32 PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    MOV SI, 0
+    MOV BX, 10
+
+DIV_LOOP:
+    DIV BX
+    PUSH DX
+    INC SI
+    MOV DX, 0
+    CMP AX, 0
+    JNE DIV_LOOP
+
+PRINT32_LOOP:
+    POP DX
+    ADD DL, '0'
+    MOV AH, 02H
+    INT 21H
+    DEC SI
+    JNZ PRINT32_LOOP
+
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+PRINT_NUM32 ENDP
 
 END MAIN
