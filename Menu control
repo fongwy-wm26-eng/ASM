@@ -1,1 +1,1745 @@
+.MODEL SMALL        ; USE THE SMALL MEMORY MODEL (ONE DS
+.STACK              ; ALLOCATE 256 BYTES FOR THE STACK
+.DATA               ; BEGINNING OF THE DATA SEGMENT
 
+    ;MODULE 1: LOGIN & LOGOUT
+    registerUsername DB 20
+                     DB ?
+                     DB 21 DUP('$')
+    registerPassword DB 20 
+                     DB ?
+                     DB 21 DUP('$')
+    loginUsername DB 20
+                    DB ?
+                    DB 21 DUP('$')
+    loginPassword DB 20
+                    DB ?
+                    DB 21 DUP('$')
+
+    attempts DB 3
+    loginStatus DB 1
+    backToMenu DB 0
+    msgReturnToMenu DB 13,10,"Returning to the login/register menu...",13,10,'$'
+
+    msgTitle DB 13,10
+              DB "================================",13,10
+              DB "    SEAT RESERVATION SYSTEM",13,10
+              DB "================================",13,10,'$'
+
+    msgAskLogin DB 13,10
+               DB "Do you want to login or register? (L/R): $"
+    msgInvalidAskLogin DB 13,10
+                  DB "Invalid input. Please enter L or R.",13,10,'$'
+    msgRegister DB 13,10
+                DB "Please register your account.",13,10
+                DB "Enter your username and password.",13,10,'$'
+    msgRegisterUser DB 13,10,"Enter your username: $"
+    msgRegisterPassword DB 13,10,"Enter your password (or B to go back): $"
+    msgInvalidUsername DB 13,10,"Invalid character. Please only enter letters or numbers. $"
+    msgInvalidPassword DB 13,10,"Invalid character. Please only enter letters, numbers or special characters (no spaces or '$')." ,13,10,'$'
+
+    msgLoginUsername DB 13,10,"Enter your username: $"
+    msgLoginPassword DB 13,10,"Enter your password (or B to go back): $"
+
+    msgLogin DB 13,10
+             DB "Please login to continue.",13,10,'$'
+    msgRegisterSuccess DB 13,10,13,10
+                  DB "Registration successful!",13,10,'$'
+    msgLoginSuccess DB 13,10,13,10
+                   DB "Login successful!",13,10,'$'
+    msgUsernameNotMatch DB 13,10, "Username not found. Please check and try again.",13,10,'$'
+    msgPasswordNotMatch DB 13,10, "Incorrect password. Please try again",13,10, '$'
+    msgAttempts DB "Attempts remaining: $"
+    msgLocked DB 13,10,13,10
+              DB "Too many failed attempts!",13,10
+              DB "System locked.",13,10,'$'
+
+    msgLogoutPrompt DB 13,10
+                  DB "Do you want to log out and exit the system? (Y/N): $"
+    msgLogout DB 13,10,13,10
+             DB "You have been logged out.",13,10,'$'
+    msgInvalidYN DB 13,10
+                DB "Invalid input. Please enter Y or N.",13,10,'$'
+    
+    newline DB 13,10,'$'
+
+;MODULE 2 : MAIN MENU
+    main_title DB 13,10
+                 DB 13,10, "========================================="
+                 DB 13,10, "      Cinema Seat Reservation System     "
+                 DB 13,10, "========================================="
+                 DB 13, 10, "1. View Seat Layout"
+                 DB 13, 10, "2. Reserve Seat"
+                 DB 13, 10, "3. Cancel Reservation"
+                 DB 13, 10, "4. Calculate Payment"
+                 DB 13, 10, "5. View Reservation Summary"
+                 DB 13, 10, "6. Logout"
+                 DB 13, 10, "Enter option (1-6): $"
+    msgInvalidOption DB 13,10, "IInvalid option. Please enter a number between 1 and 6.",13,10,'$'
+
+;VIEW_SEAT_LAYOUT section
+    ;0 = Available, 1 = Reserved
+    seat_map DB '0','0','0','0','0','0','0','0','0','0'
+             DB '0','0','0','0','0','0','0','0','0','0'
+             DB '0','0','0','0','0','0','0','0','0','0'
+             DB '0','0','0','0','0','0','0','0','0','0'
+             DB '0','0','0','0','0','0','0','0','0','0'
+
+    msgLayoutHeader DB 13,10,13,10,"======================================="
+                    DB 13,10,"           CINEMA SEAT LAYOUT           "
+                    DB 13,10,"======================================="
+                    DB 13,10,"       [ S C R E E N   H E R E ]          "
+                    DB 13,10,"---------------------------------------",13,10,'$'
+    msgAvailable    DB "      [O]=Available  [X]=Reserved",13,10,13,10,'$'
+
+;CANCEL_RESERVE section
+    cancelSeatNumber DB 20,?,21 DUP('$')
+    cancelQty DB 20,?,21 DUP ('$')
+    msgCancelTitle DB 13,10,13,10, "========================================="
+                    DB 13,10,"           CANCEL RESERVATION            "
+                    DB 13,10,"=========================================",13,10,'$'
+    msgAskCancelSeat DB 13,10, "Enter starting seat number to cancel (1-50): $"
+    msgAskCancelQty  DB 13,10,"Enter number of seats to cancel (1-10): $"
+    msgCancelSuccess DB 13,10,13,10,"Reservation successfully cancelled!",13,10,'$'
+    msgNotReserved   DB 13,10,"Warning: One or more selected seats were not reserved.",13,10,'$'
+                    
+                     
+    
+
+
+;MODULE 3: DATA ENTRY
+    customerName DB 20
+                 DB ?
+                 DB 21 DUP('$')
+    movieName    DB "Movie$"
+    seatNumber   DB 20
+                 DB ?
+                 DB 21 DUP('$')
+    ticketType  DB 20
+                DB ?
+                DB 21 DUP('$')
+    quantity    DB 20
+                DB ?
+                   DB 21 DUP('$')
+    
+    msgDataEntryTitle DB 13,10
+                     DB "======================================",13,10
+                     DB "     Seat Reservation - Data Entry",13,10
+                     DB "======================================",13,10,'$'
+    
+    msgAskCustomerName DB 13,10,"Enter customer name / ID: $"
+    msgAskMovieName DB 13,10,"Enter movie name (or B to go back): $"
+    msgAskSeatNumber DB 13,10,"Enter seat number (1-50) (or B to go back): $"
+    msgAskTicketType DB 13,10,"Enter ticket type: ",13,10
+                     DB " 1 - Adult",13,10
+                     DB " 2 - Child",13,10
+                     DB " 3 - Senior",13,10
+                     DB "Enter your choice (1-3) (or B to go back): $"
+    msgAskQuantity DB 13,10,"Enter quantity of tickets (1-10) (or B to go back): $"
+
+    msgInvalidName  DB 13,10,"Invalid input. Please only enter letters and spaces.",13,10,'$'
+    msgInvalidMovie DB 13,10,"Invalid input. Please only enter letters, numbers and spaces.",13,10,'$'
+    msgInvalidSeat  DB 13,10,"Invalid input. Please enter a seat number between 1 and 50.",13,10,'$'
+    msgInvalidTicket DB 13,10,"Invalid input. Please enter 1, 2, or 3.",13,10,'$'
+    msgInvalidQuantity DB 13,10,"Invalid input. Please enter a quantity between 1 and 10.",13,10,'$'
+
+    msgConfirmDetails DB 13,10,13,10,"---- Please confirm your reservation ----",13,10,'$'
+    msgConfirmPrompt  DB 13,10,"Are these details correct? (Y/N): $"
+    msgAgainPrompt    DB 13,10,13,10,"Do you want to make another reservation? (Y/N): $"
+
+    displayCustomer DB "Customer Name/ID : $"
+    displayMovie    DB "Movie/Event      : $"
+    displaySeat     DB "Seat Number      : $"
+    displayTicket   DB "Ticket Type      : $"
+    displayQty      DB "Quantity         : $"
+
+    msgAdult  DB "Adult$"
+    msgChild  DB "Child$"
+    msgSenior DB "Senior$"
+
+
+
+;MODULE 4: CALCULATION
+    adultTicket DW 20
+    childTicket DW 10
+    seniorTicket DW 15
+    serviceTax DW 2
+    basePrice DW 0
+    discount DW 0
+    totalPayment DW 0
+    valQuantity DW 0
+
+    msgCalcTitle    DB 13,10,13,10,"========================================="
+                    DB 13,10,"           PAYMENT CALCULATION             "
+                    DB 13,10,"=========================================",13,10,'$'
+    msgCalcPrice     DB " Base Ticket Price  : RM$"
+    msgCalcQty      DB " Quantity           : RM$"
+    msgCalcSubtotal DB " Subtotal           : RM$"
+    msgCalcDiscount DB " Bulk Discount (>=5): -RM$"
+    msgCalcTax      DB " Service Tax        : +RM$"
+    msgCalcLine     DB " -----------------------------------------",13,10,'$'
+    msgCalcTotal    DB " Total Payment      : RM$"
+    msgNoData       DB 13,10,"No data found. Please reserve a seat first.",13,10,'$'
+
+;MODULE 6 : REPORT
+;MODULE 6 : REPORT
+    msgSummaryTitle DB 13,10,13,10,"========================================="
+                    DB 13,10,"           RESERVATION SUMMARY           "
+                    DB 13,10,"=========================================",13,10,'$'
+
+
+;MODULE 7: INPUT VALIDATION
+    msgBlank DB 13,10
+                   DB "Invalid input. You must enter a value instead of leaving it blank.",13,10,'$'
+    msgInvalidNumeric DB 13,10
+                     DB "Invalid input. Please only enter numeric digits.",13,10,'$'
+    msgFirstStep DB 13,10,"You are already at the first step of this section.",13,10,'$'
+    confirmPromptPtr DW ?          ; scratch pointer used by CONFIRM_ACTION
+
+
+
+    
+
+
+
+.CODE               ; BEGINNING OF CODE SEGMENT
+MAIN PROC                                                    
+MOV AX, @DATA       ; Initialize DS register 
+MOV DS, AX
+
+ MOV AH, 09H
+    LEA DX, msgTitle
+    INT 21H
+
+    CMP loginStatus, 0
+    JE MAIN_LOOP
+
+ASK_LOGIN:
+    MOV backToMenu, 0
+    MOV AH, 09H
+    LEA DX, msgAskLogin
+    INT 21H
+
+    MOV AH, 01H
+    INT 21H
+    CMP AL, 'L'
+    JE LOGIN_
+    CMP AL, 'R'
+    JE REGISTER_
+
+    MOV AH, 09H
+    LEA DX, msgInvalidAskLogin
+    INT 21H
+    JMP ASK_LOGIN
+
+REGISTER_:
+    CALL REGISTER
+    CMP backToMenu, 1
+    JE ASK_LOGIN
+
+LOGIN_:
+    CALL LOGIN
+    CMP backToMenu, 1
+    JE ASK_LOGIN
+
+    CMP loginStatus, 1
+    JE MAIN_END             ;LOCKED OUT & EXIT
+
+MAIN_LOOP:
+    CALL MAIN_MENU
+
+    LEA DX, msgLogoutPrompt
+    CALL CONFIRM_ACTION
+    CMP AL, 'N'
+    JE MAIN_LOOP
+
+    CALL LOGOUT
+
+MAIN_END:
+MOV AH, 4CH         ; Terminate program and return control to DOS
+INT 21H
+MAIN ENDP
+
+;MODULE 1: LOGIN & LOGOUT
+
+REGISTER PROC
+
+    MOV AH, 09H
+    LEA DX, msgRegister
+    INT 21H
+
+R_USERNAME_RETRY:
+    MOV AH, 09H
+    LEA DX, msgRegisterUser
+    INT 21H
+
+    LEA DX, registerUsername
+    CALL INPUT_USERNAME
+    CMP AL, 1
+    JE R_USERNAME_RETRY
+    CMP AL, 2
+    JE R_USERNAME_FIRST
+
+R_PASSWORD_RETRY:
+    MOV AH, 09H
+    LEA DX, msgRegisterPassword
+    INT 21H
+
+    LEA DX, registerPassword
+    CALL INPUT_PASSWORD
+    CMP AL, 1
+    JE R_PASSWORD_RETRY
+    CMP AL, 2
+    JE R_USERNAME_RETRY
+
+    ; Registration successful
+    MOV AH, 09H
+    LEA DX, msgRegisterSuccess
+    INT 21H
+
+    RET
+
+R_USERNAME_FIRST:
+    MOV AH, 09H
+    LEA DX, msgReturnToMenu
+    INT 21H
+    MOV backToMenu, 1
+    RET
+
+REGISTER ENDP
+
+
+LOGIN PROC
+
+    MOV AH, 09H
+    LEA DX, msgTitle
+    INT 21H
+
+    MOV AH, 09H
+    LEA DX, msglogin
+    INT 21H
+
+LOGIN_USER_RETRY:
+    ; Ask username
+    MOV AH, 09H
+    LEA DX, msgLoginUsername
+    INT 21H
+
+    LEA DX, loginUsername
+    CALL INPUT_USERNAME
+    CMP AL, 1
+    JE LOGIN_USER_RETRY
+    CMP AL, 2
+    JE LOGIN_USER_FIRST
+
+LOGIN_PASS_RETRY:
+    ; Ask password
+    MOV AH, 09H
+    LEA DX, msgLoginPassword
+    INT 21H
+
+    LEA DX, loginPassword
+    CALL INPUT_PASSWORD
+    CMP AL, 1
+    JE LOGIN_PASS_RETRY
+    CMP AL, 2
+    JE LOGIN_USER_RETRY
+
+    ; Compare username
+    LEA SI, loginUsername
+    LEA DI, registerUsername
+    CALL COMPARE_STRING
+    CMP AL, 0
+    JNE LOGIN_USERNAME_MISMATCH
+
+    ; Compare password
+    LEA SI, loginPassword
+    LEA DI, registerPassword
+    CALL COMPARE_STRING
+    CMP AL, 0
+    JNE LOGIN_PASSWORD_MISMATCH
+
+    ; Login successful
+    MOV AH, 09H
+    LEA DX, msgLoginSuccess
+    INT 21H
+
+    MOV loginStatus, 0
+    RET
+
+LOGIN_USER_FIRST:
+    MOV AH, 09H
+    LEA DX, msgReturnToMenu
+    INT 21H
+    MOV backToMenu, 1
+    RET
+
+LOGIN_USERNAME_MISMATCH:
+    MOV AH, 09H
+    LEA DX, msgUsernameNotMatch
+    INT 21H
+    JMP LOGIN_FAILED
+
+LOGIN_PASSWORD_MISMATCH:
+    MOV AH, 09H
+    LEA DX, msgPasswordNotMatch
+    INT 21H
+
+LOGIN_FAILED:
+    DEC attempts
+    CMP attempts, 0
+    JE LOGIN_LOCKED
+
+    MOV AH, 09H
+    LEA DX, msgAttempts
+    INT 21H
+
+    ; Convert number to ASCII
+    MOV DL, attempts
+    ADD DL, '0'
+    MOV AH, 02H
+    INT 21H
+
+    JMP LOGIN_USER_RETRY
+
+
+LOGIN_LOCKED:
+
+    MOV AH, 09H
+    LEA DX, msgLocked
+    INT 21H
+
+    MOV loginStatus, 1
+    RET
+
+LOGIN ENDP
+
+LOGOUT PROC
+    MOV AH, 09H
+    LEA DX, msgLogout
+    INT 21H
+
+    RET
+LOGOUT ENDP
+
+
+; INPUT USERNAME
+INPUT_USERNAME PROC
+    PUSH SI
+    PUSH CX
+
+    MOV AH, 0CH
+    MOV AL, 0AH
+    INT 21H
+
+    MOV SI, DX
+    CMP BYTE PTR [SI+1], 0
+    JNE INPUTUSER_CHECKCHARS
+
+    MOV AH, 09H
+    LEA DX, msgBlank
+    INT 21H
+    MOV AL, 1
+    JMP INPUTUSER_DONE
+
+INPUTUSER_CHECKCHARS:
+    MOV CL, [SI+1]
+    MOV CH, 0
+    ADD SI, 2
+
+    CALL CHECK_IS_BACK
+    CMP AL, 1
+    JE INPUTUSER_BACK
+
+    CALL VALID_LETTER_NUM
+    CMP AL, 0
+    JE INPUTUSER_VALID
+
+    MOV AH, 09H
+    LEA DX, msgInvalidUsername
+    INT 21H
+    MOV AL, 1
+    JMP INPUTUSER_DONE
+
+INPUTUSER_BACK:
+    MOV AL, 2
+    JMP INPUTUSER_DONE
+
+INPUTUSER_VALID:
+    MOV AL, 0
+
+INPUTUSER_DONE:
+    POP CX
+    POP SI
+    RET
+INPUT_USERNAME ENDP
+
+; INPUT PASSWORD
+INPUT_PASSWORD PROC
+    PUSH SI
+    PUSH CX
+
+    MOV AH, 0CH
+    MOV AL, 0AH
+    INT 21H
+
+    MOV SI, DX
+    CMP BYTE PTR [SI+1], 0
+    JNE INPUTPASS_CHECKCHARS
+
+    MOV AH, 09H
+    LEA DX, msgBlank
+    INT 21H
+    MOV AL, 1
+    JMP INPUTPASS_DONE
+
+INPUTPASS_CHECKCHARS:
+    MOV CL, [SI+1]
+    MOV CH, 0
+    ADD SI, 2
+
+    CALL CHECK_IS_BACK
+    CMP AL, 1
+    JE INPUTPASS_BACK
+
+    CALL VALID_PASSWORD
+    CMP AL, 0
+    JE INPUTPASS_VALID
+
+    MOV AH, 09H
+    LEA DX, msgInvalidPassword
+    INT 21H
+    MOV AL, 1
+    JMP INPUTPASS_DONE
+
+INPUTPASS_BACK:
+    MOV AL, 2
+    JMP INPUTPASS_DONE
+
+INPUTPASS_VALID:
+    MOV AL, 0
+
+INPUTPASS_DONE:
+    POP CX
+    POP SI
+    RET
+INPUT_PASSWORD ENDP
+
+
+
+; COMPARE STRING
+
+COMPARE_STRING PROC
+    PUSH CX
+    PUSH SI
+    PUSH DI
+
+    MOV AL, [SI+1]
+    MOV AH, [DI+1]
+    CMP AL, AH
+    JNE NOT_EQUAL
+
+    MOV CL, AL
+    MOV CH, 0
+    CMP CL, 0
+    JE EQUAL
+
+    ADD SI, 2
+    ADD DI, 2
+
+COMPARE_LOOP:
+    
+    MOV AL, [SI]
+    MOV AH, [DI]
+    CMP AL, AH
+    JNE NOT_EQUAL
+
+    INC SI
+    INC DI
+    LOOP COMPARE_LOOP
+
+EQUAL:
+    MOV AL, 0
+    JMP COMPARE_DONE
+
+NOT_EQUAL:
+    MOV AL, 1
+
+COMPARE_DONE:
+    POP DI
+    POP SI
+    POP CX
+    RET
+COMPARE_STRING ENDP
+
+
+;MODULE 7: INPUT VALIDATION
+CHECK_IS_BACK PROC
+    CMP CX, 1
+    JNE CIB_NO
+    MOV AL, [SI]
+    CMP AL, 'B'
+    JE CIB_YES
+    CMP AL, 'b'
+    JE CIB_YES
+CIB_NO:
+    MOV AL, 0
+    RET
+CIB_YES:
+    MOV AL, 1
+    RET
+CHECK_IS_BACK ENDP
+
+
+VALID_LETTER_NUM PROC
+    PUSH SI
+
+VALIDLN_NUM:
+    MOV AL, [SI]
+    CMP AL, '0'
+    JB VALIDLN_CHECKALPHA
+    CMP AL, '9'
+    JBE VALIDLN_NEXT
+
+VALIDLN_CHECKALPHA:
+    CMP AL, 'A'
+    JB VALIDLN_INVALID
+    CMP AL, 'Z'
+    JBE VALIDLN_NEXT
+    CMP AL, 'a'
+    JB VALIDLN_INVALID
+    CMP AL, 'z'
+    JA VALIDLN_INVALID
+
+VALIDLN_NEXT:
+    INC SI
+    LOOP VALIDLN_NUM
+    JMP VALIDLN_DONE
+
+VALIDLN_INVALID:
+    POP SI
+    MOV AL, 1
+    RET
+
+VALIDLN_DONE:
+    POP SI
+    MOV AL, 0
+    RET
+VALID_LETTER_NUM ENDP
+
+VALID_PASSWORD PROC
+    PUSH SI
+VALIDP_LOOP:
+    MOV AL, [SI]
+    CMP AL, '!'
+    JB VALIDP_INVALID
+    CMP AL, '~'
+    JA VALIDP_INVALID
+    CMP AL, ' '
+    JE VALIDP_INVALID
+    CMP AL, '$'
+    JE VALIDP_INVALID
+    INC SI
+    LOOP VALIDP_LOOP
+    JMP VALIDP_DONE
+
+VALIDP_INVALID:
+    POP SI
+    MOV AL, 1
+    RET
+
+VALIDP_DONE:
+    POP SI
+    MOV AL, 0
+    RET
+VALID_PASSWORD ENDP
+
+VALID_ALPHA_SPACE PROC
+    PUSH SI
+VALIDAS_ALPHA_LOOP:
+    MOV AL, [SI]
+    CMP AL, ' '
+    JE VALIDAS_ALPHA_NEXT
+    CMP AL, 'A'
+    JB VALIDAS_ALPHA_INVALID
+    CMP AL, 'Z'
+    JBE VALIDAS_ALPHA_NEXT
+    CMP AL, 'a'
+    JB VALIDAS_ALPHA_INVALID
+    CMP AL, 'z'
+    JA VALIDAS_ALPHA_INVALID
+
+
+VALIDAS_ALPHA_NEXT:
+    INC SI
+    LOOP VALIDAS_ALPHA_LOOP
+    JMP VALIDAS_DONE
+
+VALIDAS_ALPHA_INVALID:
+    POP SI
+    MOV AL, 1
+    RET
+
+VALIDAS_DONE:
+    POP SI
+    MOV AL, 0
+    RET
+VALID_ALPHA_SPACE ENDP
+
+VALID_LETTER_NUM_SPACE PROC
+    PUSH SI
+VALIDLNS_LNS_LOOP:
+    MOV AL, [SI]
+    CMP AL, ' '
+    JE VALIDLNS_LNS_NEXT
+    CMP AL, '0'
+    JB VALIDLNS_LNS_INVALID
+    CMP AL, '9'
+    JBE VALIDLNS_LNS_NEXT
+    CMP AL, 'A'
+    JB VALIDLNS_LNS_INVALID
+    CMP AL, 'Z'
+    JBE VALIDLNS_LNS_NEXT
+    CMP AL, 'a'
+    JB VALIDLNS_LNS_INVALID
+    CMP AL, 'z'
+    JA VALIDLNS_LNS_INVALID
+
+VALIDLNS_LNS_NEXT:
+    INC SI
+    LOOP VALIDLNS_LNS_LOOP
+    JMP VALIDLNS_DONE
+
+VALIDLNS_LNS_INVALID:
+    POP SI
+    MOV AL, 1
+    RET
+
+VALIDLNS_DONE:
+    POP SI
+    MOV AL, 0
+    RET
+
+VALID_LETTER_NUM_SPACE ENDP
+
+
+VALID_NUMERIC PROC
+    PUSH SI
+VALIDN_NUMERIC_LOOP:
+    MOV AL, [SI]
+    CMP AL, '0'
+    JB VALIDN_NUMERIC_INVALID
+    CMP AL, '9'
+    JA VALIDN_NUMERIC_INVALID
+
+    INC SI
+    LOOP VALIDN_NUMERIC_LOOP
+    JMP VALIDN_DONE
+
+VALIDN_NUMERIC_INVALID:
+    POP SI
+    MOV AL, 1
+    RET
+
+VALIDN_DONE:
+    POP SI
+    MOV AL, 0
+    RET
+
+VALID_NUMERIC ENDP
+
+; STR_TO_NUM - convert a run of ASCII digits into a 16-bit number
+; IN: SI = ptr to first digit, CL = digit count   OUT: AX = value
+STR_TO_NUM PROC
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+    MOV AX, 0
+STN_LOOP:
+    MOV BL, [SI]
+    SUB BL, '0'
+    MOV BH, 0
+    MOV DX, 10
+    MUL DX              ; AX = AX * 10
+    ADD AX, BX
+    INC SI
+    LOOP STN_LOOP
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    RET
+STR_TO_NUM ENDP
+
+CHECK_RANGE PROC
+; Check if number is in range [min, max]
+    CMP AX, BX          ; Compare with min
+    JB CHECK_RANGE_FAIL
+    CMP AX, CX          ; Compare with max
+    JA CHECK_RANGE_FAIL
+    JMP CHECK_RANGE_DONE
+
+CHECK_RANGE_FAIL:
+    ; Number is not in range
+    MOV AL, 1
+    RET
+
+CHECK_RANGE_DONE:
+   ; Number is in range
+    MOV AL, 0
+    RET
+CHECK_RANGE ENDP
+
+CONFIRM_ACTION PROC
+    MOV confirmPromptPtr, DX
+CONFIRM_LOOP:
+    MOV AH, 09H
+    MOV DX, confirmPromptPtr
+    INT 21H
+
+    MOV AH, 0CH
+    MOV AL, 01H
+    INT 21H
+
+    CMP AL, 'y'
+    JE CONFIRM_YES
+    CMP AL, 'n'
+    JE CONFIRM_NO
+    CMP AL, 'Y'
+    JE CONFIRM_YES
+    CMP AL, 'N'
+    JE CONFIRM_NO
+
+
+    MOV AH, 09H
+    LEA DX, msgInvalidYN
+    INT 21H
+    JMP CONFIRM_LOOP
+
+CONFIRM_YES:
+    MOV AL, 'Y'
+    RET
+
+CONFIRM_NO:
+    MOV AL, 'N'
+    RET
+
+CONFIRM_ACTION ENDP
+
+;MODULE 2 : MAIN MENU
+MAIN_MENU PROC
+MAIN_MENU_START:
+    MOV AH, 09H
+    LEA DX, main_title
+    INT 21H
+
+    MOV AH, 01H
+    INT 21H
+
+    CMP AL, '1'
+    JE OPTION_1_LAYOUT
+    CMP AL, '2'
+    JE OPTION_2_RESERVE
+    CMP AL, '3'
+    JE OPTION_3_CANCEL
+    CMP AL, '4'
+    JE OPTION_4_CALCULATE
+    CMP AL, '5'
+    JE OPTION_5_SUMMARY
+    CMP AL, '6'
+    JE OPTION_6_LOGOUT
+
+    ;Invalid Option Choice
+    MOV AH, 09H
+    LEA DX, msgInvalidOption
+    INT 21H
+    JMP MAIN_MENU_START
+
+OPTION_1_LAYOUT:
+    CALL VIEW_SEAT_LAYOUT      
+    JMP MAIN_MENU_START
+
+OPTION_2_RESERVE:
+    CALL DATA_ENTRY             
+    JMP MAIN_MENU_START
+
+OPTION_3_CANCEL:
+    CALL CANCEL_RESERVATION      
+    JMP MAIN_MENU_START
+
+OPTION_4_CALCULATE:
+    CALL CALCULATE_PAYMENT      
+    JMP MAIN_MENU_START
+
+OPTION_5_SUMMARY:
+    CALL VIEW_SUMMARY          
+    JMP MAIN_MENU_START
+
+OPTION_6_LOGOUT:
+    RET                         ; Exit 
+MAIN_MENU ENDP
+
+VIEW_SEAT_LAYOUT PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+; Display header
+    MOV AH, 09H
+    LEA DX, msgLayoutHeader
+    INT 21H
+    MOV AH, 09H
+    LEA DX, msgAvailable
+    INT 21H
+
+;print layout
+    LEA SI, seat_map
+    MOV CX, 5
+
+ROW_LOOP:
+    PUSH CX
+    MOV CX,10
+
+SEAT_LOOP:
+    MOV AL, [SI]
+    CMP AL, '0'
+    JE SEAT_OPEN 
+
+SEAT_TAKEN:
+    MOV AH, 02H
+    MOV DL, '['
+    INT 21H
+    MOV DL, 'X'
+    INT 21H
+    MOV DL, ']'
+    INT 21H
+    JMP NEXT_SEAT
+
+SEAT_OPEN:
+    MOV AH, 02H
+    MOV DL, '['
+    INT 21H
+    MOV DL, 'O'
+    INT 21H
+    MOV DL, ']'
+    INT 21H
+
+NEXT_SEAT:
+    MOV AH, 02H
+    MOV DL, ' '
+    INT 21H
+
+    INC SI
+    LOOP SEAT_LOOP
+;Next row
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    POP CX
+    LOOP ROW_LOOP
+
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+
+    RET
+VIEW_SEAT_LAYOUT ENDP
+
+CANCEL_RESERVATION PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    MOV AH,09H
+    LEA DX, msgCancelTitle
+    INT 21H
+
+ASK_CANCEL_SEAT:
+    MOV AH, 09H
+    LEA DX, msgAskCancelSeat
+    INT 21H
+
+    LEA DX, cancelSeatNumber
+    CALL INPUT_SEAT         
+    CMP AL, 1
+    JE ASK_CANCEL_SEAT
+    CMP AL, 2
+    JE CANCEL_DONE
+
+ASK_CANCEL_QTY:
+    MOV AH, 09H
+    LEA DX, msgAskCancelQty
+    INT 21H
+
+    LEA DX, cancelQty
+    CALL INPUT_QUANTITY     
+    CMP AL, 1
+    JE ASK_CANCEL_QTY
+    CMP AL, 2
+    JE ASK_CANCEL_SEAT
+
+
+    LEA SI, cancelSeatNumber
+    MOV CL, [SI+1]          
+    MOV CH, 0               
+    ADD SI, 2               
+    CALL STR_TO_NUM         
+    DEC AX                  
+    MOV BX, AX              
+
+
+    LEA SI, cancelQty
+    MOV CL, [SI+1]          
+    MOV CH, 0               
+    ADD SI, 2               
+    CALL STR_TO_NUM         
+    MOV CX, AX              
+
+    LEA SI, seat_map
+    ADD SI, BX              
+
+CLEAR_LOOP:
+    CMP BX, 50              
+    JAE CANCEL_SUCCESS
+
+    MOV BYTE PTR [SI], '0'  
+    INC SI                  
+    INC BX                  
+    LOOP CLEAR_LOOP
+
+CANCEL_SUCCESS:
+    MOV AH, 09H
+    LEA DX, msgCancelSuccess
+    INT 21H
+
+CANCEL_DONE:
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET                     
+CANCEL_RESERVATION ENDP
+
+CALCULATE_PAYMENT PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+;check if data exists
+    LEA SI, quantity
+    MOV CL, [SI+1]         
+    MOV CH, 0
+    CMP CL, 0
+    JNE CALC_START
+
+;no data message
+    MOV AH, 09H
+    LEA DX, msgNoData       
+    INT 21H
+    JMP CALC_DONE
+
+CALC_START:
+;convert quantity string to number
+    ADD SI, 2
+    CALL STR_TO_NUM        
+    MOV valQuantity, AX
+
+;link ticket type to price
+    LEA BX, ticketType
+    MOV AL, [BX+2]          
+
+    CMP AL, '1'           
+    JE SET_PRICE_ADULT
+    CMP AL, '2'            
+    JE SET_PRICE_CHILD
+
+
+    MOV AX, seniorTicket    
+    MOV basePrice, AX       
+    JMP CALC_SUBTOTAL
+
+SET_PRICE_ADULT:
+    MOV AX, adultTicket     
+    MOV basePrice, AX
+    JMP CALC_SUBTOTAL
+
+SET_PRICE_CHILD:
+    MOV AX, childTicket    
+    MOV basePrice, AX
+
+CALC_SUBTOTAL:
+;subtotal = basePrice * quantity
+    MOV AX, basePrice
+    MUL valQuantity              
+    MOV basePrice, AX       
+
+;discount (if more than 5 tickets, 5% discount)
+    CMP valQuantity, 5
+    JAE APPLY_DISCOUNT
+    MOV discount, 0        
+    JMP CALC_TOTAL
+
+APPLY_DISCOUNT:
+    MOV discount, 5
+
+CALC_TOTAL:
+;total = subtotal - discount + serviceTax
+    MOV AX, basePrice
+    SUB AX, discount
+    ADD AX, serviceTax     
+    MOV totalPayment, AX
+
+;receipt output
+    MOV AH, 09H
+    LEA DX, msgCalcTitle   
+    INT 21H
+
+;display subtotal
+    LEA DX, msgCalcSubtotal 
+    INT 21H
+    MOV AX, basePrice
+    CALL PRINT_NUM
+    MOV AH, 09H
+    LEA DX, newline        
+    INT 21H
+
+;display discount
+    LEA DX, msgCalcDiscount 
+    INT 21H
+    MOV AX, discount
+    CALL PRINT_NUM
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+;display service tax
+    LEA DX, msgCalcTax     
+    INT 21H
+    MOV AX, serviceTax
+    CALL PRINT_NUM
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+;display line and total payment
+    LEA DX, msgCalcLine    
+    INT 21H
+    LEA DX, msgCalcTotal   
+    INT 21H
+    MOV AX, totalPayment
+    CALL PRINT_NUM
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+CALC_DONE:
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+CALCULATE_PAYMENT ENDP
+    
+
+;MODULE 3: DATA ENTRY
+DATA_ENTRY PROC
+DATA_ENTRY_START:
+    MOV AH, 09H
+    LEA DX, msgDataEntryTitle
+    INT 21H
+
+DATA_ENTRY_NAME:
+    MOV AH, 09H
+    LEA DX, msgAskCustomerName
+    INT 21H
+    LEA DX, customerName
+    CALL INPUT_NAME
+    CMP AL, 1
+    JE DATA_ENTRY_NAME
+    CMP AL, 2
+    JE DATA_ENTRY_NAME_FIRST
+
+DATA_ENTRY_SEAT:
+    MOV AH, 09H
+    LEA DX, msgAskSeatNumber
+    INT 21H
+    LEA DX, seatNumber
+    CALL INPUT_SEAT
+    CMP AL, 1
+    JE DATA_ENTRY_SEAT
+    CMP AL, 2
+    JE DATA_ENTRY_NAME
+
+DATA_ENTRY_TICKET:
+    MOV AH, 09H
+    LEA DX, msgAskTicketType
+    INT 21H
+    LEA DX, ticketType
+    CALL INPUT_TICKET
+    CMP AL, 1
+    JE DATA_ENTRY_TICKET
+    CMP AL, 2
+    JE DATA_ENTRY_SEAT
+
+DATA_ENTRY_QUANTITY:
+    MOV AH, 09H
+    LEA DX, msgAskQuantity
+    INT 21H
+    LEA DX, quantity
+    CALL INPUT_QUANTITY
+    CMP AL, 1
+    JE DATA_ENTRY_QUANTITY
+    CMP AL, 2
+    JE DATA_ENTRY_TICKET
+
+    CALL DISPLAY_RESERVATION
+
+    LEA DX, msgConfirmPrompt
+    CALL CONFIRM_ACTION
+    CMP AL, 'N'
+    JE DATA_ENTRY_START_JMP
+
+    CALL UPDATE_SEAT_MAP
+
+    LEA DX, msgAgainPrompt
+    CALL CONFIRM_ACTION
+    CMP AL, 'Y'
+    JE DATA_ENTRY_START_JMP
+
+    RET
+DATA_ENTRY_START_JMP:
+    JMP DATA_ENTRY_START
+
+DATA_ENTRY_NAME_FIRST:
+    MOV AH, 09H
+    LEA DX, msgFirstStep
+    INT 21H
+    JMP DATA_ENTRY_NAME
+
+DATA_ENTRY ENDP
+
+INPUT_NAME PROC
+    PUSH SI
+    PUSH CX
+    MOV AH, 0CH
+    MOV AL, 0AH
+    INT 21H
+
+    MOV SI, DX
+    CMP BYTE PTR [SI+1], 0
+    JNE INPUTNAME_CHECK
+
+    MOV AH, 09H
+    LEA DX, msgBlank
+    INT 21H
+    MOV AL, 1
+    JMP INPUTNAME_DONE
+INPUTNAME_CHECK:
+    MOV CL, [SI+1]
+    MOV CH, 0
+    ADD SI, 2
+
+    CALL CHECK_IS_BACK
+    CMP AL, 1
+    JE INPUTNAME_BACK
+
+    CALL VALID_ALPHA_SPACE
+    CMP AL, 0
+    JE INPUTNAME_VALID
+
+    MOV AH, 09H
+    LEA DX, msgInvalidName
+    INT 21H
+    MOV AL, 1
+    JMP INPUTNAME_DONE
+INPUTNAME_BACK:
+    MOV AL, 2
+    JMP INPUTNAME_DONE
+INPUTNAME_VALID:
+    MOV AL, 0
+INPUTNAME_DONE:
+    POP CX
+    POP SI
+    RET
+INPUT_NAME ENDP
+
+INPUT_SEAT PROC
+    PUSH SI
+    PUSH CX
+    MOV AH, 0CH
+    MOV AL, 0AH
+    INT 21H
+
+    MOV SI, DX
+    CMP BYTE PTR [SI+1], 0
+    JNE INPUTSEAT_CHECKNUM
+
+    MOV AH, 09H
+    LEA DX, msgBlank
+    INT 21H
+    MOV AL, 1
+    JMP INPUTSEAT_DONE
+INPUTSEAT_CHECKNUM:
+    MOV CL, [SI+1]
+    MOV CH, 0
+    ADD SI, 2
+
+    CALL CHECK_IS_BACK
+    CMP AL, 1
+    JE INPUTSEAT_BACK
+
+    CALL VALID_NUMERIC
+    CMP AL, 0
+    JE INPUTSEAT_CHECKRANGE
+
+    MOV AH, 09H
+    LEA DX, msgInvalidNumeric
+    INT 21H
+    MOV AL, 1
+    JMP INPUTSEAT_DONE
+INPUTSEAT_CHECKRANGE:
+    MOV BX, DX
+    MOV CL, [BX+1]
+    MOV CH, 0
+    MOV SI, BX
+    ADD SI, 2
+    CALL STR_TO_NUM
+   
+    MOV BX, 1
+    MOV CX, 50
+    CALL CHECK_RANGE
+    
+    CMP AL, 0
+    JE INPUTSEAT_VALID
+
+    MOV AH, 09H
+    LEA DX, msgInvalidSeat
+    INT 21H
+    MOV AL, 1
+    JMP INPUTSEAT_DONE
+INPUTSEAT_BACK:
+    MOV AL, 2
+    JMP INPUTSEAT_DONE
+INPUTSEAT_VALID:
+    MOV AL, 0
+INPUTSEAT_DONE:
+    POP CX
+    POP SI
+    RET
+INPUT_SEAT ENDP
+
+INPUT_TICKET PROC
+    PUSH SI
+    PUSH CX
+    MOV AH, 0CH
+    MOV AL, 0AH
+    INT 21H
+
+    MOV SI, DX
+    CMP BYTE PTR [SI+1], 0
+    JNE INPUTTICKET_CHECKNUM
+
+    MOV AH, 09H
+    LEA DX, msgBlank
+    INT 21H
+    MOV AL, 1
+    JMP INPUTTICKET_DONE
+INPUTTICKET_CHECKNUM:
+    MOV CL, [SI+1]
+    MOV CH, 0
+    ADD SI, 2
+
+    CALL CHECK_IS_BACK
+    CMP AL, 1
+    JE INPUTTICKET_BACK
+
+    CALL VALID_NUMERIC
+    CMP AL, 0
+    JE INPUTTICKET_CHECKRANGE
+
+    MOV AH, 09H
+    LEA DX, msgInvalidNumeric
+    INT 21H
+    MOV AL, 1
+    JMP INPUTTICKET_DONE
+INPUTTICKET_CHECKRANGE:
+    MOV BX, DX
+    MOV CL, [BX+1]
+    MOV CH, 0
+    MOV SI, BX
+    ADD SI, 2
+    CALL STR_TO_NUM
+
+    MOV BX, 1
+    MOV CX, 3
+    CALL CHECK_RANGE
+    
+    CMP AL, 0
+    JE INPUTTICKET_VALID
+
+    MOV AH, 09H
+    LEA DX, msgInvalidTicket
+    INT 21H
+    MOV AL, 1
+    JMP INPUTTICKET_DONE
+INPUTTICKET_BACK:
+    MOV AL, 2
+    JMP INPUTTICKET_DONE
+INPUTTICKET_VALID:
+    MOV AL, 0
+INPUTTICKET_DONE:
+    POP CX
+    POP SI
+    RET
+INPUT_TICKET ENDP
+
+INPUT_QUANTITY PROC
+    PUSH SI
+    PUSH CX
+    MOV AH, 0CH
+    MOV AL, 0AH
+    INT 21H
+
+    MOV SI, DX
+    CMP BYTE PTR [SI+1], 0
+    JNE INPUTQUANTITY_CHECKNUM
+
+    MOV AH, 09H
+    LEA DX, msgBlank
+    INT 21H
+    MOV AL, 1
+    JMP INPUTQUANTITY_DONE
+INPUTQUANTITY_CHECKNUM:
+    MOV CL, [SI+1]
+    MOV CH, 0
+    ADD SI, 2
+
+    CALL CHECK_IS_BACK
+    CMP AL, 1
+    JE INPUTQUANTITY_BACK
+
+    CALL VALID_NUMERIC
+    CMP AL, 0
+    JE INPUTQUANTITY_CHECKRANGE
+
+    MOV AH, 09H
+    LEA DX, msgInvalidNumeric
+    INT 21H
+    MOV AL, 1
+    JMP INPUTQUANTITY_DONE
+INPUTQUANTITY_CHECKRANGE:
+    MOV BX, DX
+    MOV CL, [BX+1]
+    MOV CH, 0
+    MOV SI, BX
+    ADD SI, 2
+    CALL STR_TO_NUM
+
+    MOV BX, 1
+    MOV CX, 10
+    CALL CHECK_RANGE
+    
+    CMP AL, 0
+    JE INPUTQUANTITY_VALID
+
+    MOV AH, 09H
+    LEA DX, msgInvalidQuantity
+    INT 21H
+    MOV AL, 1
+    JMP INPUTQUANTITY_DONE
+INPUTQUANTITY_BACK:
+    MOV AL, 2
+    JMP INPUTQUANTITY_DONE
+INPUTQUANTITY_VALID:
+    MOV AL, 0
+INPUTQUANTITY_DONE:
+    POP CX
+    POP SI
+    RET
+INPUT_QUANTITY ENDP
+
+UPDATE_SEAT_MAP PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+;convert seat number to index and reserve seats
+    LEA SI, seatNumber
+    MOV CL, [SI+1]          
+    MOV CH, 0
+    CMP CL, 0
+    JE UPDATE_DONE          
+
+    ADD SI, 2               
+    CALL STR_TO_NUM         
+    DEC AX                  
+    MOV BX, AX              
+
+;convert quantity to loop counter and reserve seats
+    LEA SI, quantity
+    MOV CL, [SI+1]          
+    MOV CH, 0
+    CMP CL, 0
+    JE UPDATE_DONE          
+
+    ADD SI, 2               
+    CALL STR_TO_NUM         
+    MOV CX, AX              
+
+    LEA SI, seat_map
+    ADD SI, BX              
+
+RESERVE_LOOP:
+    ; safety check
+    CMP BX, 50
+    JAE UPDATE_DONE
+
+    MOV BYTE PTR [SI], '1'  
+    INC SI                  
+    INC BX                  
+    LOOP RESERVE_LOOP       
+
+UPDATE_DONE:
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+UPDATE_SEAT_MAP ENDP
+
+DISPLAY_RESERVATION PROC
+    MOV AH, 09H
+    LEA DX, msgConfirmDetails
+    INT 21H
+
+    MOV AH, 09H
+    LEA DX, displayCustomer
+    INT 21H
+    MOV AH, 09H
+    LEA DX, customerName+2
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    MOV AH, 09H
+    LEA DX, displayMovie
+    INT 21H
+    MOV AH, 09H
+    LEA DX, movieName
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    MOV AH, 09H
+    LEA DX, displaySeat
+    INT 21H
+    MOV AH, 09H
+    LEA DX, seatNumber+2
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    MOV AH, 09H
+    LEA DX, displayTicket
+    INT 21H
+    LEA BX, ticketType
+    MOV AL, [BX+2]
+    CMP AL, '1'
+    JE TYPE_ADULT
+    CMP AL, '2'
+    JE TYPE_CHILD
+    LEA DX, msgSenior
+    JMP TICKET
+TYPE_ADULT:
+    LEA DX, msgAdult
+    JMP TICKET
+TYPE_CHILD:
+    LEA DX, msgChild
+TICKET:
+    MOV AH, 09H
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    MOV AH, 09H
+    LEA DX, displayQty
+    INT 21H
+    MOV AH, 09H
+    LEA DX, quantity+2
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    RET
+DISPLAY_RESERVATION ENDP
+
+;MODULE 4 : CALCULATION
+CALCULATION PROC
+
+
+    
+    RET
+CALCULATION ENDP
+
+
+
+;MODULE 6 : REPORT
+VIEW_SUMMARY PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    ; --- STEP 1: CHECK IF RESERVATION DATA EXISTS ---
+    LEA SI, customerName
+    MOV CL, [SI+1]          ; Load string length from customerName buffer[cite: 2]
+    MOV CH, 0
+    CMP CL, 0
+    JNE SUMMARY_START
+
+    ; If empty, notify user and exit
+    MOV AH, 09H
+    LEA DX, msgNoData       ; "No data found. Please run Option 2 first."[cite: 2]
+    INT 21H
+    JMP SUMMARY_DONE
+
+SUMMARY_START:
+    ; --- STEP 2: PRINT SUMMARY HEADER ---
+    MOV AH, 09H
+    LEA DX, msgSummaryTitle
+    INT 21H
+
+    ; --- STEP 3: PRINT CUSTOMER DETAILS ---
+    ; Customer Name
+    MOV AH, 09H
+    LEA DX, displayCustomer
+    INT 21H
+    MOV AH, 09H
+    LEA DX, customerName+2  ; Output ASCII string[cite: 2]
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    ; Movie Name
+    MOV AH, 09H
+    LEA DX, displayMovie
+    INT 21H
+    MOV AH, 09H
+    LEA DX, movieName+2     ; Output ASCII string[cite: 2]
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    ; Starting Seat Number
+    MOV AH, 09H
+    LEA DX, displaySeat
+    INT 21H
+    MOV AH, 09H
+    LEA DX, seatNumber+2    ; Output ASCII string[cite: 2]
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    ; Ticket Type
+    MOV AH, 09H
+    LEA DX, displayTicket
+    INT 21H
+    LEA BX, ticketType
+    MOV AL, [BX+2]          ; Read choice char[cite: 2]
+    CMP AL, '1'
+    JE SUM_TYPE_ADULT
+    CMP AL, '2'
+    JE SUM_TYPE_CHILD
+    LEA DX, msgSenior       ; Default: Senior[cite: 2]
+    JMP SUM_TICKET_PRINT
+
+SUM_TYPE_ADULT:
+    LEA DX, msgAdult        ; Adult[cite: 2]
+    JMP SUM_TICKET_PRINT
+
+SUM_TYPE_CHILD:
+    LEA DX, msgChild        ; Child[cite: 2]
+
+SUM_TICKET_PRINT:
+    MOV AH, 09H
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+    ; Quantity
+    MOV AH, 09H
+    LEA DX, displayQty
+    INT 21H
+    MOV AH, 09H
+    LEA DX, quantity+2      ; Output ASCII string[cite: 2]
+    INT 21H
+    MOV AH, 09H
+    LEA DX, newline
+    INT 21H
+
+SUMMARY_DONE:
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+VIEW_SUMMARY ENDP
+
+;convert number to ASCII
+PRINT_NUM PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+
+    MOV CX, 0               
+    MOV BX, 10              
+
+CONVERT_LOOP:
+    MOV DX, 0
+    DIV BX                  
+    PUSH DX                 
+    INC CX                  
+    CMP AX, 0
+    JNE CONVERT_LOOP
+
+PRINT_LOOP:
+    POP DX                  
+    ADD DL, '0'           
+    MOV AH, 02H            
+    INT 21H
+    LOOP PRINT_LOOP
+
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+PRINT_NUM ENDP
+
+END MAIN
