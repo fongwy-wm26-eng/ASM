@@ -1158,8 +1158,9 @@ VSL_DAY:
     CMP AL, 1
     JE VSL_DAY
     CMP AL, 2
-    JE VSL_CANCELLED
-
+    JNE VSL_SLOT
+    JMP VSL_CANCELLED
+    
 VSL_SLOT:
     MOV AH, 09H
     LEA DX, msgAskSlot
@@ -1220,16 +1221,16 @@ NEXT_SEAT:
     MOV AH, 02H
     MOV DL, ' '
     INT 21H
-
     INC SI
     LOOP SEAT_LOOP
 ;Next row
     MOV AH, 09H
     LEA DX, newline
     INT 21H
-
     POP CX
     LOOP ROW_LOOP
+    LEA DX, msgContinue
+    CALL CONFIRM_ACTION
 
 VSL_CANCELLED:
     POP SI
